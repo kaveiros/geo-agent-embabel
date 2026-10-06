@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>OpenStreetMap with Spring Boot & Leaflet</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" 
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+          crossorigin="" />
+
+    <style>
+        /* Map container MUST have an explicit height */
+        #map {
+            height: 500px;
+            width: 100%;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Interactive Map</h2>
+    
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- Display area for coordinates -->
+    <p>Selected Location: <span id="coordinates">Click anywhere on the map</span></p>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
+            crossorigin=""></script>
+
+    <script>
+        // 1. Initialize map (Center: Athens, Zoom: 13)
+        const map = L.map('map').setView([37.9838, 23.7275], 13);
+
+        // 2. Add OpenStreetMap Tile Layer
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // 3. Variable to hold active marker
+        let activeMarker = null;
+
+        // 4. Handle Map Click Event
+        map.on('click', function(e) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+
+            // Update page text
+            document.getElementById('coordinates').innerText = `Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`;
+
+            // Remove existing marker if any
+            if (activeMarker) {
+                map.removeLayer(activeMarker);
+            }
+
+            // Place a new marker at clicked position
+            activeMarker = L.marker([lat, lng]).addTo(map)
+                .bindPopup(`Clicked at:<br><b>Lat:</b> ${lat.toFixed(4)}<br><b>Lng:</b> ${lng.toFixed(4)}`)
+                .openPopup();
+
+        const payload = { latitude: lat, longitude: lng };
+
+        fetch('/api/location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+            })
+        .then(response => response.json())
+        .then(data => console.log('Saved:', data));
+        });
+    </script>
+</body>
+</html>
