@@ -1,4 +1,4 @@
-package com.nikosch.agent.geo_agent;
+package com.nikosch.agent.geo;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
