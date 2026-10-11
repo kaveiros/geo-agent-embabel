@@ -1,4 +1,4 @@
-package com.nikosch.agent.geo.record;
+package com.nikosch.geo.record;
 
 import com.embabel.agent.api.common.Ai;
 import org.springframework.stereotype.Component;

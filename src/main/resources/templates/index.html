@@ -17,17 +17,29 @@
             width: 100%;
             border-radius: 8px;
         }
+
+        #report {
+            margin-top: 12px;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            white-space: pre-wrap;
+        }
     </style>
 </head>
 <body>
 
-    <h2>Interactive Map</h2>
+    <h2>Geological Application</h2>
+    <h3>Click on the map to get information for this region.</h3>
     
     <!-- Map Container -->
     <div id="map"></div>
 
     <!-- Display area for coordinates -->
     <p>Selected Location: <span id="coordinates">Click anywhere on the map</span></p>
+
+    <!-- Display area for the geo report -->
+    <div id="report" hidden></div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
@@ -67,13 +79,21 @@
 
         const payload = { latitude: lat, longitude: lng };
 
+        const reportDiv = document.getElementById('report');
+        reportDiv.hidden = false;
+        reportDiv.innerText = 'Loading report...';
+
         fetch('/api/location', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
             })
-        .then(response => response.json())
-        .then(data => console.log('Saved:', data));
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+        })
+        .then(report => reportDiv.innerText = report.summary)
+        .catch(err => reportDiv.innerText = 'Failed to load report: ' + err.message);
         });
     </script>
 </body>

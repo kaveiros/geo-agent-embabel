@@ -1,4 +1,4 @@
-package com.nikosch.agent.geo;
+package com.nikosch.geo;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
