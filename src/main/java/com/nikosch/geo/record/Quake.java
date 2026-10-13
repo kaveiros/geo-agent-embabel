@@ -1,4 +1,5 @@
 package com.nikosch.geo.record;
 
-public record Quake(String quakeData) {
-}
+import java.util.List;
+
+public record Quake(String quakeData) {}

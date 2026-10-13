@@ -17,11 +17,14 @@ public class GeodataAgent {
 
     @Action
     public Quake retrieveQuakeData(Location location) {
-        return geoApiClients.getEarhquakeData();
+        return geoApiClients.getEarhquakeData(location);
     }
 
     @Action
     public Formation retrieveRockData(Location location) {
+        //https://www.elevation-api.eu/v1/elevation/39.62711/21.31348?json
+        //https://macrostrat.org/api/v2/geologic_units/map?lat=39.62711&lng=21.31348
+
         return geoApiClients.getRockData();
     }
 
