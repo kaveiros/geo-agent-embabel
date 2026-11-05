@@ -4,6 +4,8 @@ import com.embabel.agent.api.invocation.AgentInvocation;
 import com.embabel.agent.core.AgentPlatform;
 import com.nikosch.geo.record.AiComponent;
 import com.nikosch.geo.record.GeoReport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +17,8 @@ import com.nikosch.geo.record.Location;
 
 @Controller
 public class MapController {
+
+    private static final Logger log = LoggerFactory.getLogger(MapController.class);
 
     private final AiComponent aiComponent;
     private final AgentPlatform agentPlatform;
@@ -37,11 +41,11 @@ public class MapController {
     public GeoReport postLocation(@RequestBody Location location) {
         var lat = location.latitude();
         var lon = location.longitude();
-        System.out.println("Received location: " + location.latitude() + ", " + location.longitude());
+        log.info("Received location: {}, {}", lat, lon);
         AiComponent.Point point = new AiComponent.Point(lat, lon);
         Location location1 = new Location(lat, lon);
         //String info = aiComponent.getGeoInfoForPoint(point);
-        System.out.println("invoking agents");
+        log.info("Invoking agents");
 
         return AgentInvocation.create(agentPlatform, GeoReport.class).invoke(location);
     }
