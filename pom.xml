@@ -50,16 +50,14 @@
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-
 		<dependency>
-			<groupId>com.embabel.agent</groupId>
-			<artifactId>embabel-agent-starter</artifactId>
-			<version>${embabel-agent.version}</version>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-restclient</artifactId>
 		</dependency>
 
 		<dependency>
 			<groupId>com.embabel.agent</groupId>
-			<artifactId>embabel-agent-starter-ollama</artifactId>
+			<artifactId>embabel-agent-starter-google-genai</artifactId>
 			<version>${embabel-agent.version}</version>
 		</dependency>
 	</dependencies>

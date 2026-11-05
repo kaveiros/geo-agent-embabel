@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>OpenStreetMap with Spring Boot & Leaflet</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" 
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+          crossorigin="" />
+
+    <style>
+        /* Map container MUST have an explicit height */
+        #map {
+            height: 500px;
+            width: 100%;
+            border-radius: 8px;
+        }
+
+        #report {
+            margin-top: 12px;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            white-space: pre-wrap;
+        }
+
+        #analysis {
+            margin: 8px 0 12px;
+            padding: 12px;
+            border: 1px solid #9cc2e5;
+            border-radius: 8px;
+            background: #eef6fd;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        #analysis h3, #analysis h4 { margin: 12px 0 4px; }
+
+        #quakes, #rocks, #fossils {
+            max-height: 250px;
+            overflow-y: auto;
+            margin: 8px 0;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Geological Application</h2>
+    <h3>Click on the map to get information for this region.</h3>
+    
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- Display area for coordinates -->
+    <p>Selected Location: <span id="coordinates">Click anywhere on the map</span></p>
+
+    <!-- Display area for the geo report -->
+    <div id="report" hidden>
+        <div id="status"></div>
+        <strong>Geological Analysis</strong>
+        <div id="analysis"></div>
+        <strong>Earthquakes</strong>
+        <div id="quakes"></div>
+        <strong>Rocks</strong>
+        <div id="rocks"></div>
+        <strong>Fossils</strong>
+        <div id="fossils"></div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
+            crossorigin=""></script>
+
+    <script>
+        // 1. Initialize map (Center: Athens, Zoom: 13)
+        const map = L.map('map').setView([37.9838, 23.7275], 13);
+
+        // 2. Add OpenStreetMap Tile Layer
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Minimal, safe markdown renderer (escapes HTML first): headings, bold, bullets
+        function renderMarkdown(md) {
+            const esc = md.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const inline = t => t.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\*(.+?)\*/g, '<i>$1</i>');
+            let html = '', inList = false;
+            for (const line of esc.split('\n')) {
+                const li = line.match(/^\s*[-*]\s+(.*)/);
+                if (li) {
+                    if (!inList) { html += '<ul>'; inList = true; }
+                    html += '<li>' + inline(li[1]) + '</li>';
+                    continue;
+                }
+                if (inList) { html += '</ul>'; inList = false; }
+                const h = line.match(/^(#{1,4})\s+(.*)/);
+                if (h) html += '<h4>' + inline(h[2]) + '</h4>';
+                else if (line.trim()) html += '<p>' + inline(line) + '</p>';
+            }
+            return html + (inList ? '</ul>' : '');
+        }
+
+        // 3. Variable to hold active marker
+        let activeMarker = null;
+
+        // 4. Handle Map Click Event
+        map.on('click', function(e) {
+            // wrap() normalizes longitudes from repeated world copies into [-180, 180]
+            const wrapped = e.latlng.wrap();
+            const lat = wrapped.lat;
+            const lng = wrapped.lng;
+
+            // Update page text
+            document.getElementById('coordinates').innerText = `Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`;
+
+            // Remove existing marker if any
+            if (activeMarker) {
+                map.removeLayer(activeMarker);
+            }
+
+            // Place a new marker at clicked position
+            activeMarker = L.marker([lat, lng]).addTo(map)
+                .bindPopup(`Clicked at:<br><b>Lat:</b> ${lat.toFixed(4)}<br><b>Lng:</b> ${lng.toFixed(4)}`)
+                .openPopup();
+
+        const payload = { latitude: lat, longitude: lng };
+
+        const reportDiv = document.getElementById('report');
+        reportDiv.hidden = false;
+        const statusDiv = document.getElementById('status');
+        const analysisDiv = document.getElementById('analysis');
+        const quakesDiv = document.getElementById('quakes');
+        const rocksDiv = document.getElementById('rocks');
+        const fossilsDiv = document.getElementById('fossils');
+        statusDiv.innerText = 'Loading report...';
+        analysisDiv.innerText = '';
+        quakesDiv.innerText = '';
+        rocksDiv.innerText = '';
+        fossilsDiv.innerText = '';
+
+        fetch('/api/location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+            })
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+        })
+        .then(report => {
+            statusDiv.innerText = '';
+            analysisDiv.innerHTML = renderMarkdown(report.analysis || '');
+            // Summary format: "Quakes: ...\nRocks: ...\nFossils: ..."
+            const text = report.summary;
+            const rIdx = text.indexOf('\nRocks:');
+            const fIdx = text.indexOf('\nFossils:');
+            const section = (start, end, label) =>
+                (start < 0 ? '' : text.slice(start, end < 0 ? undefined : end))
+                    .replace(new RegExp('^\\s*' + label + ':\\s*'), '').trim();
+            const qEnd = rIdx >= 0 ? rIdx : fIdx;
+            quakesDiv.innerText = section(0, qEnd, 'Quakes');
+            rocksDiv.innerText = section(rIdx, fIdx > rIdx ? fIdx : -1, 'Rocks');
+            fossilsDiv.innerText = section(fIdx, -1, 'Fossils');
+        })
+        .catch(err => {
+            statusDiv.innerText = 'Failed to load report: ' + err.message;
+        });
+        });
+    </script>
+</body>
+</html>
