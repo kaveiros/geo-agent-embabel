@@ -3,8 +3,14 @@ package com.nikosch.geo.agent;
 import com.embabel.agent.api.annotation.AchievesGoal;
 import com.embabel.agent.api.annotation.Action;
 import com.embabel.agent.api.annotation.Agent;
+import com.embabel.agent.api.common.OperationContext;
 import com.nikosch.geo.client.GeoApiClients;
 import com.nikosch.geo.record.*;
+import org.springframework.core.io.ClassPathResource;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 
 @Agent(description = "Gathers geological information about a geographic point and summarises it")
 public class GeodataAgent {
@@ -22,26 +28,43 @@ public class GeodataAgent {
 
     @Action
     public Formation retrieveRockData(Location location) {
-        //https://www.elevation-api.eu/v1/elevation/39.62711/21.31348?json
-        //https://macrostrat.org/api/v2/geologic_units/map?lat=39.62711&lng=21.31348
 
-        return geoApiClients.getRockData();
+        return geoApiClients.getRockData(location);
     }
 
     @Action
     public Fossil retrieveFosilData(Location location) {
-        return geoApiClients.getFosilData();
+        return geoApiClients.getFosilData(location);
     }
 
     @AchievesGoal(description = "Produce a report about the location")
     @Action
-    public GeoReport summarize(Quake quake, Formation formation, Fossil fossil) {
-        GeoReport report = new GeoReport("Quakes: " + quake.quakeData()
+    public GeoReport summarize(Location location, Quake quake, Formation formation, Fossil fossil,
+                               OperationContext context) {
+        String data = "Quakes: " + quake.quakeData()
                 + "\nRocks: " + formation.formationData()
-                + "\nFossils: " + fossil.fossilData());
-        System.out.println(report.summary());
+                + "\nFossils: " + fossil.fossilData();
 
-        return report;
+        String prompt = loadSystemPrompt()
+                + "\n\n---\n\n# INPUT DATA\nCoordinates: " + location.latitude() + ", " + location.longitude()
+                + "\n\n" + data;
+
+        String analysis;
+        try {
+            analysis = context.ai().withDefaultLlm().generateText(prompt);
+        } catch (RuntimeException e) {
+            // Keep the raw data usable even if the model call fails
+            analysis = "Geological analysis unavailable: " + e.getMessage();
+        }
+        return new GeoReport(data, analysis);
+    }
+
+    private static String loadSystemPrompt() {
+        try (var in = new ClassPathResource("prompts/field-geologist.md").getInputStream()) {
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
 }
